@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeaArt LoRA 学習プロンプト30個生成</title>
+<style>
+:root { --bg:#f5f6f8; --card:#fff; --text:#202124; --muted:#6b7280; --accent:#635bff; --border:#e2e5ea; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+.container{max-width:1100px;margin:0 auto;padding:32px 20px 60px}
+h1{margin:0 0 8px;font-size:28px}
+.lead{color:var(--muted);margin:0 0 28px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 4px 18px rgba(0,0,0,.04);margin-bottom:20px}
+label{font-weight:700;display:block;margin-bottom:10px}
+textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:14px;font-size:15px;line-height:1.7;outline:none}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,91,255,.12)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{border:0;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer}
+.primary{background:var(--accent);color:#fff}.secondary{background:#eef0f4;color:#333}.danger{background:#fff0f0;color:#c33}
+.status{margin-top:12px;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.item{border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff}
+.item-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.num{font-weight:800;color:var(--accent)}
+.copy{padding:7px 11px;background:#eef0ff;color:#5148d8}
+.prompt{white-space:pre-wrap;word-break:break-word;line-height:1.65;font-size:14px;color:#333}
+.empty{color:var(--muted);text-align:center;padding:30px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}h1{font-size:23px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SeaArt LoRA 学習プロンプト生成アプリ</h1>
+  <p class="lead">ベースとなる人物像を入力すると、人物LoRAの学習画像向けプロンプトを30種類自動生成します。</p>
+
+  <section class="card">
+    <label for="base">ベース人物プロンプト</label>
+    <textarea id="base" placeholder="例：アニメスタイル, 日本人の熟女, Details face, 美乳, ビキニ, ゴールド, ロングヘアー, 茶髪, 背景白"></textarea>
+    <div class="row">
+      <button class="primary" onclick="generate()">30個生成</button>
+      <button class="secondary" onclick="copyAll()">30個をまとめてコピー</button>
+      <button class="danger" onclick="clearAll()">クリア</button>
+    </div>
+    <div id="status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <div class="item-head">
+      <h2 style="margin:0;font-size:20px">生成結果</h2>
+      <span id="count" class="status">0 / 30</span>
+    </div>
+    <div id="results" class="empty">ベース人物プロンプトを入力して「30個生成」を押してください。</div>
+  </section>
+</div>
+
+<script>
+const variations = [
+ ["正面立ち","front view, standing, looking at viewer, full body"],
+ ["正面上半身","front view, upper body, looking at viewer, portrait"],
+ ["斜め立ち","three-quarter view, standing, looking at viewer, full body"],
+ ["横向き","profile view, side view, standing"],
+ ["座り姿","sitting pose, relaxed posture, full body"],
+ ["椅子に座る","sitting on a chair, elegant posture, full body"],
+ ["膝立ち","kneeling pose, looking at viewer, full body"],
+ ["歩く","walking pose, dynamic posture, full body"],
+ ["振り返り","looking back over shoulder, three-quarter view, full body"],
+ ["手を腰に","hands on hips, confident pose, full body"],
+ ["片手を上げる","one hand raised, elegant pose, full body"],
+ ["髪に触れる","touching hair, elegant pose, upper body"],
+ ["両手を前に","hands in front, gentle pose, upper body"],
+ ["腕組み","arms crossed, confident expression, upper body"],
+ ["微笑み","gentle smile, portrait, upper body"],
+ ["真顔","neutral expression, portrait, upper body"],
+ ["目を閉じる","eyes closed, serene expression, upper body"],
+ ["見下ろし視点","from slightly above, looking at viewer, full body"],
+ ["見上げ視点","from slightly below, looking at viewer, full body"],
+ ["ローアングル","low angle, standing, full body"],
+ ["ハイアングル","high angle, standing, full body"],
+ ["屋内","indoors, simple room, standing, full body"],
+ ["窓辺","standing near a window, soft daylight, full body"],
+ ["ベッド脇","standing beside a bed, indoor scene, full body"],
+ ["白背景","plain white background, studio lighting, full body"],
+ ["シンプル背景","simple background, studio lighting, full body"],
+ ["屋外","outdoors, soft daylight, standing, full body"],
+ ["夕方","outdoors at sunset, warm atmosphere, standing"],
+ ["近接ポートレート","close-up portrait, detailed face"],
+ ["顔中心","head and shoulders, detailed face, looking at viewer"]
+];
+
+function normalize(s){ return s.replace(/\s+/g," ").trim(); }
+
+function generate(){
+  const base = normalize(document.getElementById("base").value);
+  const results = document.getElementById("results");
+  const status = document.getElementById("status");
+  if(!base){
+    results.className="empty";
+    results.textContent="ベース人物プロンプトを入力してください。";
+    document.getElementById("count").textContent="0 / 30";
+    status.textContent="";
+    return;
+  }
+  results.className="grid";
+  results.innerHTML="";
+  variations.forEach((v,i)=>{
+    const prompt = `${base}, ${v[1]}, consistent character design, same person, high quality, detailed`;
+    const item=document.createElement("div");
+    item.className="item";
+    item.innerHTML=`<div class="item-head"><span class="num">#${String(i+1).padStart(2,"0")} ${v[0]}</span><button class="copy" onclick="copyOne(${i})">コピー</button></div><div class="prompt" id="p${i}"></div>`;
+    results.appendChild(item);
+    document.getElementById("p"+i).textContent=prompt;
+  });
+  document.getElementById("count").textContent="30 / 30";
+  status.textContent="30個の学習用プロンプトを生成しました。";
+}
+
+function getPrompts(){
+  return [...document.querySelectorAll(".prompt")].map((el,i)=>`${i+1}. ${el.textContent}`);
+}
+async function copyOne(i){
+  const el=document.getElementById("p"+i);
+  if(!el) return;
+  await navigator.clipboard.writeText(el.textContent);
+  document.getElementById("status").textContent=`#${String(i+1).padStart(2,"0")} をコピーしました。`;
+}
+async function copyAll(){
+  const ps=getPrompts();
+  if(!ps.length){document.getElementById("status").textContent="先に30個生成してください。";return;}
+  await navigator.clipboard.writeText(ps.join("\n\n"));
+  document.getElementById("status").textContent="30個すべてをコピーしました。";
+}
+function clearAll(){
+  document.getElementById("base").value="";
+  document.getElementById("results").className="empty";
+  document.getElementById("results").textContent="ベース人物プロンプトを入力して「30個生成」を押してください。";
+  document.getElementById("count").textContent="0 / 30";
+  document.getElementById("status").textContent="";
+}
+</script>
+</body>
+</html>
